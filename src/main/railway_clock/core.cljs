@@ -5,9 +5,69 @@
             [goog.string :as gstring]
             [goog.string.format]))
 
+(defn deg->rad [degrees]
+  (* degrees (/ js/Math.PI 180)))
+
+(defn polar->cartesian [r phi]
+  [(* r (js/Math.cos phi))
+   (* r (js/Math.sin phi))])
+
+(defn tick [{:keys [cx cy r1 r2 angle]} style]
+  (let [[x1 y1] (polar->cartesian r1 (deg->rad (- angle 90)))
+        [x2 y2] (polar->cartesian r2 (deg->rad (- angle 90)))]
+    [:line (merge
+             {:x1 (+ cx x1) :y1 (+ cy y1)
+              :x2 (+ cx x2) :y2 (+ cy y2)}
+             style)]))
+
+(defn second-hand [{:keys [cx cy r1 r2 angle] :as c} style]
+  (let [[x1 y1] (polar->cartesian r1 (deg->rad (- angle 90)))
+        [x2 y2] (polar->cartesian r2 (deg->rad (- angle 90)))]
+    (lazy-seq
+      [^{:key "second-hand-body"} [tick c style]
+       ^{:key "second-hand-tip"}  [:circle {:cx (+ cx x2) :cy (+ cy y2) :r 4 :fill "red"}]])))
+
+
+(defn clock [hour-angle minute-angle second-angle]
+  [:center
+    [:svg
+      {:view-box "0 0 100 100"
+       :width 400
+       :height 400}
+      [:circle {:cx 50 :cy 50 :r 49 :stroke "gray" :stroke-width 1 :fill "none"}]
+      (for [angle (range 0 360 30)]
+        ^{:key (str "hours" angle)}
+        [tick {:cx 50 :cy 50 :r1 37 :r2 46 :angle angle}
+              {:stroke "black" :stroke-width 3}])
+      (for [angle (range 0 360 5)]
+        ^{:key (str "minutes" angle)}
+        [tick {:cx 50 :cy 50 :r1 43 :r2 46 :angle angle}
+              {:stroke "black" :stroke-width 1}])
+
+      ; hour
+      [tick {:cx 50 :cy 50 :r1 -10 :r2 30 :angle hour-angle}
+            {:stroke "black" :stroke-width 6}]
+      ; minute
+      [tick {:cx 50 :cy 50 :r1 -10 :r2 44 :angle minute-angle}
+            {:stroke "black" :stroke-width 4}]
+
+      ; second
+      (second-hand {:cx 50 :cy 50 :r1 -13 :r2 33 :angle second-angle}
+                   {:stroke "red" :stroke-width 1})]])
+
+
+(defonce timer (r/atom (js/Date.)))
+
+(defonce time-updater (js/setInterval
+                       #(reset! timer (js/Date.)) 1000))
+
 (defn main []
-  [:div
-    [:h1 "Railway clock"]])
+  (let [hours (.getHours @timer)
+        minutes (.getMinutes @timer)
+        seconds (.getSeconds @timer)]
+    [clock (* (/ 360 12) (mod hours 12))
+           (* (/ 360 60) (mod minutes 60))
+           (* (/ 360 60) (mod seconds 60))]))
 
 (defn mount []
   (rdom/render [main] (gdom/getElement "app")))
