@@ -5,28 +5,21 @@
             [goog.string :as gstring]
             [goog.string.format]))
 
-(defn deg->rad [degrees]
-  (* degrees (/ js/Math.PI 180)))
-
-(defn polar->cartesian [r phi]
-  [(* r (js/Math.cos phi))
-   (* r (js/Math.sin phi))])
+(defn rotate [& params]
+  (str "rotate" "(" (clojure.string/join "," params) ")"))
 
 (defn tick [{:keys [cx cy r1 r2 angle]} style]
-  (let [[x1 y1] (polar->cartesian r1 (deg->rad (- angle 90)))
-        [x2 y2] (polar->cartesian r2 (deg->rad (- angle 90)))]
-    [:line (merge
-             {:x1 (+ cx x1) :y1 (+ cy y1)
-              :x2 (+ cx x2) :y2 (+ cy y2)}
-             style)]))
+  [:line (merge
+           {:x1 cx :y1 (- cy r1)
+            :x2 cx :y2 (- cy r2)
+            :transform (rotate angle cx cy)}
+           style)])
 
 (defn second-hand [{:keys [cx cy r1 r2 angle] :as c} style]
-  (let [[x1 y1] (polar->cartesian r1 (deg->rad (- angle 90)))
-        [x2 y2] (polar->cartesian r2 (deg->rad (- angle 90)))]
-    (lazy-seq
-      [^{:key "second-hand-body"} [tick c style]
-       ^{:key "second-hand-tip"}  [:circle {:cx (+ cx x2) :cy (+ cy y2) :r 4 :fill "red"}]])))
-
+  (lazy-seq
+    [^{:key "second-hand-body"} [tick c style]
+     ^{:key "second-hand-tip"}  [:circle {:cx cx :cy (- cy r2) :r 4 :fill "red"
+                                          :transform (rotate angle cx cy)}]]))
 
 (defn clock [hour-angle minute-angle second-angle]
   [:center
