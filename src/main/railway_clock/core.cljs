@@ -5,40 +5,29 @@
             [goog.string :as gstring]
             [goog.string.format]))
 
-(defn rotate [& params]
-  (str "rotate" "(" (clojure.string/join "," params) ")"))
-
 (defn tick [{:keys [cx cy r1 r2 angle]} style]
   [:line (merge
            {:x1 cx :y1 (- cy r1)
             :x2 cx :y2 (- cy r2)
-            :transform (rotate angle cx cy)}
+            :transform (gstring/format "rotate(%d,%d,%d)" angle cx cy)}
            style)])
 
-(defn second-hand [{:keys [cx cy r1 r2 angle] :as c} style]
-  [:<>
-    [:line
-     {:x1 cx :y1 (- cy r1)
-       :x2 cx :y2 (- cy r2)
-       :stroke "red"}
+(defn second-hand [{:keys [cx cy r1 r2 angle] :as c}]
+  (let [seconds (/ angle 6)
+        stop-for-seconds 1.5
+        remaining-seconds (- 60 seconds stop-for-seconds)]
+    [:g
+     {:stroke "red" :fill "red"}
+     [:line {:x1 cx :y1 (- cy r1) :x2 cx :y2 (- cy r2)}]
+     [:circle {:cx cx :cy (- cy r2) :r 4}]
      [:animateTransform
       {:attributeName "transform"
        :type "rotate"
        :attributeType "XML"
-       :from (clojure.string/join " " [angle cx cy])
-       :by (clojure.string/join " " [6 0 0])
-       :dur "1s"
-       :repeatCount "indefinite"}]]
-
-    [:circle {:cx cx :cy (- cy r2) :r 4 :fill "red"}
-     [:animateTransform
-      {:attributeName "transform"
-       :type "rotate"
-       :attributeType "XML"
-       :from (clojure.string/join " " [angle cx cy])
-       :by (clojure.string/join " " [6 0 0])
-       :dur "1s"
-       :repeatCount "indefinite"}]]])
+       :from (gstring/format "%d %d %d" angle cx cy)
+       :to (gstring/format "%d %d %d" 360 cx cy)
+       :dur (gstring/format "%ds" remaining-seconds)
+       :repeatCount 1}]]))
 
 (defn clock [hour-angle minute-angle second-angle]
   [:center
@@ -58,28 +47,27 @@
 
       ; hour
       [tick {:cx 50 :cy 50 :r1 -10 :r2 30 :angle hour-angle}
-            {:stroke "black" :stroke-width 6}]
+            {:stroke "black" :stroke-width 5}]
       ; minute
       [tick {:cx 50 :cy 50 :r1 -10 :r2 44 :angle minute-angle}
             {:stroke "black" :stroke-width 4}]
-
       ; second
-      [second-hand {:cx 50 :cy 50 :r1 -13 :r2 33 :angle second-angle}
-                   {:stroke "red" :stroke-width 1}]]])
-
-
-(defonce timer (r/atom (js/Date.)))
-
-(defonce time-updater (js/setInterval
-                       #(reset! timer (js/Date.)) 1000))
+      [second-hand {:cx 50 :cy 50 :r1 -13 :r2 33 :angle second-angle}]]])
 
 (defn main []
-  (let [hours (.getHours @timer)
-        minutes (.getMinutes @timer)
-        seconds (.getSeconds @timer)]
-    [clock (* (/ 360 12) (mod hours 12))
-           (* (/ 360 60) (mod minutes 60))
-           (* (/ 360 60) (mod seconds 60))]))
+  (let [timer (r/atom (js/Date.))]
+    (fn []
+      (let [hours (.getHours @timer)
+            minutes (.getMinutes @timer)
+            seconds (.getSeconds @timer)
+            updater (js/setTimeout (fn update-time-and-restart-animation []
+                                     (reset! timer (js/Date.))) (* 1000 (- 60 (.getSeconds @timer)))
+                                     (doseq [animation (gdom/getElementsByTagName "animateTransform")]
+                                        (.beginElement animation)))]
+
+        [clock (* (/ 360 12) (+ (mod hours 12) (/ minutes 60)))
+               (* (/ 360 60) minutes)
+               (* (/ 360 60) seconds)]))))
 
 (defn mount []
   (rdom/render [main] (gdom/getElement "app")))
