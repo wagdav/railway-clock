@@ -16,10 +16,29 @@
            style)])
 
 (defn second-hand [{:keys [cx cy r1 r2 angle] :as c} style]
-  (lazy-seq
-    [^{:key "second-hand-body"} [tick c style]
-     ^{:key "second-hand-tip"}  [:circle {:cx cx :cy (- cy r2) :r 4 :fill "red"
-                                          :transform (rotate angle cx cy)}]]))
+  [:<>
+    [:line
+     {:x1 cx :y1 (- cy r1)
+       :x2 cx :y2 (- cy r2)
+       :stroke "red"}
+     [:animateTransform
+      {:attributeName "transform"
+       :type "rotate"
+       :attributeType "XML"
+       :from (clojure.string/join " " [angle cx cy])
+       :by (clojure.string/join " " [6 0 0])
+       :dur "1s"
+       :repeatCount "indefinite"}]]
+
+    [:circle {:cx cx :cy (- cy r2) :r 4 :fill "red"}
+     [:animateTransform
+      {:attributeName "transform"
+       :type "rotate"
+       :attributeType "XML"
+       :from (clojure.string/join " " [angle cx cy])
+       :by (clojure.string/join " " [6 0 0])
+       :dur "1s"
+       :repeatCount "indefinite"}]]])
 
 (defn clock [hour-angle minute-angle second-angle]
   [:center
@@ -45,8 +64,8 @@
             {:stroke "black" :stroke-width 4}]
 
       ; second
-      (second-hand {:cx 50 :cy 50 :r1 -13 :r2 33 :angle second-angle}
-                   {:stroke "red" :stroke-width 1})]])
+      [second-hand {:cx 50 :cy 50 :r1 -13 :r2 33 :angle second-angle}
+                   {:stroke "red" :stroke-width 1}]]])
 
 
 (defonce timer (r/atom (js/Date.)))
