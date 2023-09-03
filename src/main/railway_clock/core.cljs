@@ -1,7 +1,7 @@
 (ns railway-clock.core
   (:require [goog.dom :as gdom]
             [reagent.core :as r]
-            [reagent.dom :as rdom]
+            [reagent.dom.client :as rclient]
             [goog.string :as gstring]
             [goog.string.format]))
 
@@ -69,13 +69,14 @@
                (* (/ 360 60) minutes)
                (* (/ 360 60) seconds)]))))
 
-(defn mount []
-  (rdom/render [main] (gdom/getElement "app")))
+(defonce dom-root
+     (rclient/create-root (gdom/getElement "app")))
 
-(defn ^:dev/after-load on-reload []
-  (mount))
+(defn ^:dev/after-load start []
+    (rclient/render dom-root [main]))
 
-(defonce startup (do (mount) true))
+(defn init []
+    (start))
 
 (comment
   ; Evaluate these lines to enter into a ClojureScript REPL
