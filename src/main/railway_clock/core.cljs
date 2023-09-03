@@ -57,13 +57,13 @@
 (defn main []
   (let [timer (r/atom (js/Date.))]
     (fn []
+      (js/setTimeout (fn update-time-and-restart-animation []
+                       (reset! timer (js/Date.))) (* 1000 (- 60 (.getSeconds @timer)))
+                       (doseq [animation (gdom/getElementsByTagName "animateTransform")]
+                          (.beginElement animation)))
       (let [hours (.getHours @timer)
             minutes (.getMinutes @timer)
-            seconds (.getSeconds @timer)
-            updater (js/setTimeout (fn update-time-and-restart-animation []
-                                     (reset! timer (js/Date.))) (* 1000 (- 60 (.getSeconds @timer)))
-                                     (doseq [animation (gdom/getElementsByTagName "animateTransform")]
-                                        (.beginElement animation)))]
+            seconds (.getSeconds @timer)]
 
         [clock (* (/ 360 12) (+ (mod hours 12) (/ minutes 60)))
                (* (/ 360 60) minutes)
