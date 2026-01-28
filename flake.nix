@@ -34,19 +34,7 @@
 
           buildInputs = [ pkgs.clojure ];
 
-          nodeModules = pkgs.mkYarnModules rec {
-            pname = "railway-clock";
-            name = "railway-clock-node-modules-${version}";
-            inherit version;
-            packageJSON = ./package.json;
-            yarnLock = ./yarn.lock;
-          };
-
           src = self;
-
-          configurePhase = ''
-            ln -s $nodeModules/node_modules .
-          '';
 
           buildPhase = ''
             export HOME=$PWD
@@ -66,7 +54,6 @@
             clj2nix.defaultPackage.${system}
             clojure
             ghp-import
-            yarn
           ];
         };
 

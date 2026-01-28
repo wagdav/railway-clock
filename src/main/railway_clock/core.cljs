@@ -1,9 +1,8 @@
 (ns railway-clock.core
   (:require [goog.dom :as gdom]
-            [reagent.core :as r]
-            [reagent.dom.client :as rclient]
             [goog.string :as gstring]
-            [goog.string.format]))
+            [goog.string.format]
+            [replicant.dom :as r]))
 
 (defn tick [{:keys [cx cy r1 r2 angle]} style]
   [:line (merge
@@ -29,54 +28,55 @@
        :dur (gstring/format "%ds" remaining-seconds)
        :repeatCount 1}]]))
 
-(defn clock [hour-angle minute-angle second-angle]
+(defn clock [{:keys [hour-angle minute-angle second-angle]}]
   [:center
     [:svg
-      {:view-box "0 0 100 100"
-       :width 400
-       :height 400}
+      {:style {:width :auto
+               :height "100vh"}
+       :viewBox "0 0 103 103"}
       [:circle {:cx 50 :cy 50 :r 49 :stroke "gray" :stroke-width 1 :fill "none"}]
       (for [angle (range 0 360 30)]
         ^{:key (str "hours" angle)}
-        [tick {:cx 50 :cy 50 :r1 37 :r2 46 :angle angle}
-              {:stroke "black" :stroke-width 3}])
+        (tick {:cx 50 :cy 50 :r1 37 :r2 46 :angle angle}
+              {:stroke "black" :stroke-width 3}))
       (for [angle (range 0 360 5)]
         ^{:key (str "minutes" angle)}
-        [tick {:cx 50 :cy 50 :r1 43 :r2 46 :angle angle}
-              {:stroke "black" :stroke-width 1}])
+        (tick {:cx 50 :cy 50 :r1 43 :r2 46 :angle angle}
+              {:stroke "black" :stroke-width 1}))
 
       ; hour
-      [tick {:cx 50 :cy 50 :r1 -10 :r2 30 :angle hour-angle}
-            {:stroke "black" :stroke-width 5}]
+      (tick {:cx 50 :cy 50 :r1 -10 :r2 30 :angle hour-angle}
+            {:stroke "black" :stroke-width 5})
       ; minute
-      [tick {:cx 50 :cy 50 :r1 -10 :r2 44 :angle minute-angle}
-            {:stroke "black" :stroke-width 4}]
+      (tick {:cx 50 :cy 50 :r1 -10 :r2 44 :angle minute-angle}
+            {:stroke "black" :stroke-width 4})
       ; second
-      [second-hand {:cx 50 :cy 50 :r1 -13 :r2 33 :angle second-angle}]]])
+      (second-hand {:cx 50 :cy 50 :r1 -13 :r2 33 :angle second-angle})]])
+
+(defn get-angles [now]
+  (let [hours (.getHours now)
+        minutes (.getMinutes now)
+        seconds (.getSeconds now)]
+    {:hour-angle   (* (/ 360 12) (+ (mod hours 12) (/ minutes 60)))
+     :minute-angle (* (/ 360 60) minutes)
+     :second-angle (* (/ 360 60) seconds)}))
 
 (defn main []
-  (let [timer (r/atom (js/Date.))]
-    (fn []
-      (js/setTimeout (fn update-time-and-restart-animation []
-                       (reset! timer (js/Date.))) (* 1000 (- 60 (.getSeconds @timer)))
-                       (doseq [animation (gdom/getElementsByTagName "animateTransform")]
-                          (.beginElement animation)))
-      (let [hours (.getHours @timer)
-            minutes (.getMinutes @timer)
-            seconds (.getSeconds @timer)]
-
-        [clock (* (/ 360 12) (+ (mod hours 12) (/ minutes 60)))
-               (* (/ 360 60) minutes)
-               (* (/ 360 60) seconds)]))))
-
-(defonce dom-root
-     (rclient/create-root (gdom/getElement "app")))
+  (let [now (js/Date.)
+        dom-root (gdom/getElement "app")]
+    (r/render dom-root (clock (get-angles now)))
+    (js/setTimeout
+      (fn update-time-and-restart-animation []
+         (main)
+         (doseq [animation (gdom/getElementsByTagName "animateTransform")]
+           (.beginElement animation)))
+      (* 1000 (- 60 (.getSeconds now))))))
 
 (defn ^:dev/after-load start []
-    (rclient/render dom-root [main]))
+  (main))
 
 (defn init []
-    (start))
+  (start))
 
 (comment
   ; Evaluate these lines to enter into a ClojureScript REPL
